@@ -51,7 +51,10 @@ class Model:
         control_outputs = self.rep_control_pipeline(
             text_inputs=prompt, 
             activations=self.get_activations(honesty_coeff), 
-            max_new_tokens=max_new_tokens
+            max_new_tokens=max_new_tokens,
+            repetition_penalty=1,
+            no_repeat_ngram_size=3
+            
         )
 
         # Assuming control_outputs contains the generated text
@@ -63,10 +66,7 @@ class Model:
         hidden_layers = list(range(-1, -self.model.config.num_hidden_layers, -1))
         n_difference = 1
         direction_method = 'pca'
-        print("before setting:", self.tokenizer.pad_token_id)
-
         self.tokenizer.pad_token_id = 0
-        print("after setting:", self.tokenizer.pad_token_id)
 
         rep_reading_pipeline =  pipeline("rep-reading", model=self.model, tokenizer=self.tokenizer)
         dataset = self.dataset
