@@ -1,0 +1,3 @@
+[submodule "packages/representation_engineering"]
+	path = packages/representation_engineering
+	url = https://github.com/andyzoujm/representation-engineering.git
