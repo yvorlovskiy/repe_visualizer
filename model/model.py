@@ -10,6 +10,7 @@ import os
 
 from representation_engineering.examples.honesty.utils import honesty_function_dataset, plot_lat_scans, plot_detection_results
 from representation_engineering.repe import repe_pipeline_registry
+from utils import honesty_utils
 
 CHECKPOINT = "mistralai/Mistral-7B-Instruct-v0.1"
 
@@ -23,7 +24,6 @@ class Model:
         self.honesty_rep_reader = None
         self.rep_control_pipeline = None
         self.dataset = None 
-        self.honesty_activations = None
 
     def load(self):
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -34,9 +34,9 @@ class Model:
         self.tokenizer = AutoTokenizer.from_pretrained(CHECKPOINT, 
                                                 use_fast=use_fast_tokenizer, 
                                                 padding_side="left", legacy=False)
-        self.dataset = self.get_dataset()
+        self.dataset = honesty_utils.get_honesty_dataset(os.path.join(self._data_dir, 'facts', 'facts_true_false.csv'))
         print("Honesty dataset loaded successfully!")
-        self.honesty_rep_reader = self.get_honesty_rep_reader()
+        self.honesty_rep_reader = honesty_utils.get_honesty_rep_reader(self.model, self.tokenizer, self.dataset)
         print("Honesty rep reader loaded successfully!")
         self.rep_control_pipeline = self.get_rep_control_pipeline()
         print("Representation control pipeline loaded successfully!")
@@ -50,7 +50,7 @@ class Model:
         # Apply activations with basic arguments
         control_outputs = self.rep_control_pipeline(
             text_inputs=prompt, 
-            activations=self.get_activations(honesty_coeff), 
+            activations=honesty_utils.get_honesty_activations(self.model, self.honesty_rep_reader, honesty_coeff), 
             max_new_tokens=max_new_tokens,
             repetition_penalty=1,
             no_repeat_ngram_size=3
@@ -96,43 +96,43 @@ class Model:
             control_method=control_method)
         return rep_control_pipeline
     
-    def get_activations(self, coeff = 2):
+    def get_honesty_activations(self, coeff = 2):
         layer_id = list(range(-5, -18, -1))
         activations = {}
         for layer in layer_id:
             activations[layer] = torch.tensor(coeff * self.honesty_rep_reader.directions[layer] * self.honesty_rep_reader.direction_signs[layer]).to(self.model.device).half()
         return activations
     
-    def get_dataset(self):
+    def get_honesty_dataset(self):
         user_tag = "[INST]"
         assistant_tag = "[/INST]"
         data_path = os.path.join(self._data_dir, 'facts', 'facts_true_false.csv')
         dataset = honesty_function_dataset(data_path, self.tokenizer, user_tag, assistant_tag)
         return dataset
 
- def get_honesty_scores(self, texts, rep_token=-1):
-    hidden_layers = list(range(-1, -self.model.config.num_hidden_layers, -1))
-    honesty_scores_dict = {}
-    
-    for text in texts:
-        input_ids = self.tokenizer(text, return_tensors="pt").input_ids.to(self.model.device)
-        outputs = self.model(input_ids, output_hidden_states=True)
-        hidden_states = outputs.hidden_states
+    def get_honesty_scores(self, texts, rep_token=-1):
+        hidden_layers = list(range(-1, -self.model.config.num_hidden_layers, -1))
+        honesty_scores_dict = {}
         
-        scores = []
-        for layer in hidden_layers:
-            layer_hidden_states = hidden_states[layer][:, rep_token, :]
-            score = torch.dot(layer_hidden_states.squeeze(), 
-                              self.honesty_rep_reader.directions[layer] * 
-                              self.honesty_rep_reader.direction_signs[layer])
-            scores.append(score.item())
-        
-        honesty_score = sum(scores) / len(scores)  # Taking the mean score as the honesty score
-        tokens = self.tokenizer.tokenize(text)
-        
-        # Assuming that each token gets the same honesty score for simplicity
-        for token in tokens:
-            honesty_scores_dict[token] = honesty_score
+        for text in texts:
+            input_ids = self.tokenizer(text, return_tensors="pt").input_ids.to(self.model.device)
+            outputs = self.model(input_ids, output_hidden_states=True)
+            hidden_states = outputs.hidden_states
+            
+            scores = []
+            for layer in hidden_layers:
+                layer_hidden_states = hidden_states[layer][:, rep_token, :]
+                score = torch.dot(layer_hidden_states.squeeze(), 
+                                self.honesty_rep_reader.directions[layer] * 
+                                self.honesty_rep_reader.direction_signs[layer])
+                scores.append(score.item())
+            
+            honesty_score = sum(scores) / len(scores)  # Taking the mean score as the honesty score
+            tokens = self.tokenizer.tokenize(text)
+            
+            # Assuming that each token gets the same honesty score for simplicity
+            for token in tokens:
+                honesty_scores_dict[token] = honesty_score
     
-    return honesty_scores_dict
-    
+        return honesty_scores_dict
+        
