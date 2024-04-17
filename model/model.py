@@ -29,13 +29,13 @@ class Model:
                 "load_dataset": honesty_utils.get_dataset,
                 "get_rep_reader": honesty_utils.get_rep_reader,
                 "get_activations": honesty_utils.get_activations,
+            },
+            "emotion": {
+                "dataset_path": os.path.join(self._data_dir, 'emotions'),
+                "load_dataset": emotion_utils.get_dataset,
+                "get_rep_reader": emotion_utils.get_rep_readers,
+                "get_activations": emotion_utils.get_activations,
             }
-            # "emotion": {
-            #     "dataset_path": os.path.join(self._data_dir, 'emotions'),
-            #     "load_dataset": emotion_utils.get_dataset,
-            #     "get_rep_reader": emotion_utils.get_rep_readers,
-            #     "get_activations": emotion_utils.get_activations,
-            # }
             
         }
 
@@ -52,6 +52,8 @@ class Model:
         for rep_name, control in self.representation_controls.items():
             if "dataset" not in control:
                 control["dataset"] = control["load_dataset"](control["dataset_path"], self.tokenizer)
+                print(f'{rep_name} dataset loaded successfully')
+
             if "rep_reader" not in control:
                 control["rep_reader"] = control["get_rep_reader"](self.model, self.tokenizer, control["dataset"])
                 print(f'{rep_name} reader loaded successfully')
@@ -71,14 +73,11 @@ class Model:
         max_new_tokens = request.get("max_new_tokens", 128)
         
         get_activations = self.representation_controls[control_type]["get_activations"]
-        print(type(self.representation_controls["honesty"]["rep_reader"]))
-
-        print(self.representation_controls["honesty"]["rep_reader"].directions)
 
         # Apply activations with basic arguments
         control_outputs = self.rep_control_pipeline(
             text_inputs=prompt, 
-            activations=get_activations(self.model, self.representation_controls["honesty"]["rep_reader"], honesty_coeff), 
+            activations=get_activations(self.model, self.representation_controls[control_type]["rep_reader"], honesty_coeff), 
             max_new_tokens=max_new_tokens,
             repetition_penalty=1,
             no_repeat_ngram_size=3
