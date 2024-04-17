@@ -20,6 +20,7 @@ requirements:
 - seaborn==0.13.2
 - sentence_transformers==2.6.1
 - setuptools==65.5.0
+- tqdm==4.66.2
 
 resources:
   accelerator: A10G
