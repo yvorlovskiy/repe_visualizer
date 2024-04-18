@@ -22,13 +22,8 @@ def call_baseten_model(prompt, **kwargs):
     else:
         return "Error: " + response.text
 
-def gradio_interface(prompt, control, honesty_coefficient, emotion):
-    if control == "honesty":
-        return call_baseten_model(prompt, control=control, honesty_coefficient=honesty_coefficient)
-    elif control == "emotion":
-        return call_baseten_model(prompt, control=control, emotion=emotion)
-    else:
-        return "Invalid control selection."
+def gradio_interface(prompt, control, honesty_coefficient, emotion, emotion_coefficient):
+    return call_baseten_model(prompt, control=control, honesty_coefficient=honesty_coefficient, emotion=emotion, emotion_coefficient=emotion_coefficient)
 
 iface = gr.Interface(
     fn=gradio_interface, 
@@ -36,19 +31,26 @@ iface = gr.Interface(
         gr.Textbox(label="Prompt", placeholder="Enter your prompt here"),
         gr.Dropdown(
             choices=["honesty", "emotion"], 
-            label="Rep Control Selector", 
+            label="Rep Control Selector",
             info="Select which representation control you want to use"
         ),
         gr.Slider(
             minimum=-2, maximum=2, step=0.1, value=0, 
-            label="Honesty Coefficient"
+            label="Honesty Coefficient",
+            visible=lambda inputs: inputs["Rep Control Selector"] == "honesty"
         ),
         gr.Dropdown(
             choices=["happiness", "sadness", "anger", "fear", "disgust", "surprise"], 
-            label="Emotion", 
-            info="Emotion selector for emotion controls"
+            label="Emotion",
+            info="Emotion selector for emotion controls",
+            visible=lambda inputs: inputs["Rep Control Selector"] == "emotion"
+        ),
+        gr.Slider(
+            minimum=-2, maximum=2, step=0.1, value=0, 
+            label="Emotion Coefficient",
+            visible=lambda inputs: inputs["Rep Control Selector"] == "emotion"
         )
-    ], 
+    ],
     outputs="text",
     live=False
 )

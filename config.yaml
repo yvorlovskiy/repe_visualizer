@@ -25,5 +25,6 @@ requirements:
 resources:
   accelerator: A10G
   use_gpu: true
-secrets: {}
+secrets:
+  hf_access_token: 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
 system_packages: []

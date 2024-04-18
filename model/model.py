@@ -19,6 +19,7 @@ class Model:
         # enables representation reading and control in the pipeline 
         repe_pipeline_registry()
         self._data_dir = kwargs["data_dir"]
+        self._secrets = kwargs["secrets"]
         self.tokenizer = None
         self.model = None
         self.rep_control_pipeline = None
@@ -29,31 +30,34 @@ class Model:
                 "load_dataset": honesty_utils.get_dataset,
                 "get_rep_reader": honesty_utils.get_rep_reader,
                 "get_activations": honesty_utils.get_activations,
+                "activation_inputs": ["honesty_coefficient"]
             },
             "emotion": {
                 "dataset_path": os.path.join(self._data_dir, 'emotions'),
                 "load_dataset": emotion_utils.get_dataset,
                 "get_rep_reader": emotion_utils.get_rep_readers,
                 "get_activations": emotion_utils.get_activations,
+                "activation_inputs":["emotion", "emotion_coefficient"]
             }
             
         }
 
     def load(self):
+        
         self.model = AutoModelForCausalLM.from_pretrained(
-            CHECKPOINT, torch_dtype=torch.float16, device_map="auto"
+            CHECKPOINT, torch_dtype=torch.float16, device_map="auto", use_auth_token=self._secrets["hf_access_token"]
         )
 
         use_fast_tokenizer = "LlamaForCausalLM" not in self.model.config.architectures
         self.tokenizer = AutoTokenizer.from_pretrained(CHECKPOINT, 
-                                                use_fast=use_fast_tokenizer, 
+                                                use_fast=use_fast_tokenizer, use_auth_token=self._secrets["hf_access_token"],
                                                 padding_side="left", legacy=False)
         
         for rep_name, control in self.representation_controls.items():
             if "dataset" not in control:
                 control["dataset"] = control["load_dataset"](control["dataset_path"], self.tokenizer)
                 print(f'{rep_name} dataset loaded successfully')
-
+                
             if "rep_reader" not in control:
                 control["rep_reader"] = control["get_rep_reader"](self.model, self.tokenizer, control["dataset"])
                 print(f'{rep_name} reader loaded successfully')
@@ -69,24 +73,42 @@ class Model:
     def predict(self, request: dict):
         prompt = request.get("prompt", "")
         control_type = request.get("control_type", "honesty")
-        honesty_coeff = request.get("honesty_coefficient", 2)
         max_new_tokens = request.get("max_new_tokens", 128)
         
-        get_activations = self.representation_controls[control_type]["get_activations"]
+        # Access the general control configuration
+        control_config = self.representation_controls.get(control_type, {})
+        get_activations = control_config.get("get_activations")
 
-        # Apply activations with basic arguments
+        # Determine the appropriate 'rep_reader' based on control type and specific conditions
+        if control_type == "emotion" and "emotion" in request:
+            emotion = request.get("emotion")
+            rep_reader = control_config.get("rep_reader", {}).get(emotion)
+        else:
+            rep_reader = control_config.get("rep_reader")
+
+        # Validate that we have necessary components
+        if not callable(get_activations) or rep_reader is None:
+            return "Invalid control type, configuration, or missing parameters."
+
+        # Collect activation parameters
+        activation_params = {
+            key: request.get(key) for key in control_config.get("required_params", [])
+        }
+        
+        print(activation_params)
+
+        # Apply activations with dynamic arguments
+        activations = get_activations(self.model, rep_reader, **activation_params)
         control_outputs = self.rep_control_pipeline(
             text_inputs=prompt, 
-            activations=get_activations(self.model, self.representation_controls[control_type]["rep_reader"], honesty_coeff), 
+            activations=activations,
             max_new_tokens=max_new_tokens,
             repetition_penalty=1,
             no_repeat_ngram_size=3
-            
         )
 
-        # Assuming control_outputs contains the generated text
         return control_outputs[0]['generated_text']
-    
+        
     def get_rep_control_pipeline(self):
         layer_id = list(range(-5, -18, -1))
         block_name="decoder_block"
