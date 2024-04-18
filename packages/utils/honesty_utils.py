@@ -24,11 +24,11 @@ def get_rep_reader(model, tokenizer, dataset):
     return rep_reader
 
 
-def get_activations(model, rep_reader, coeff = .5):
+def get_activations(model, rep_reader, honesty_coefficient = .5):
     layer_id = list(range(-5, -18, -1))
     activations = {}
     for layer in layer_id:
-        activations[layer] = torch.tensor(coeff * rep_reader.directions[layer] * rep_reader.direction_signs[layer]).to(model.device).half()
+        activations[layer] = torch.tensor(honesty_coefficient * rep_reader.directions[layer] * rep_reader.direction_signs[layer]).to(model.device).half()
     return activations
 
 

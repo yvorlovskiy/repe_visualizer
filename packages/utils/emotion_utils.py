@@ -30,11 +30,11 @@ def get_rep_readers(model, tokenizer, data, emotions = ["happiness", "sadness", 
     return rep_readers
 
 
-def get_activations(model, rep_readers, emotion, coeff = .5):
+def get_activations(model, rep_readers, emotion, emotion_coefficient = .5):
     layer_id = list(range(-11, -30, -1))
     activations = {}
     for layer in layer_id:
-        activations[layer] = torch.tensor(coeff * rep_readers[emotion].directions[layer] * rep_readers[emotion].direction_signs[layer]).to(model.device).half()
+        activations[layer] = torch.tensor(emotion_coefficient * rep_readers[emotion].directions[layer] * rep_readers[emotion].direction_signs[layer]).to(model.device).half()
 
     
 def get_dataset(data_path, tokenizer):
