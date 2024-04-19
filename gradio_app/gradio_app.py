@@ -15,15 +15,15 @@ def call_baseten_model(prompt, **kwargs):
     url = "https://app.baseten.co/models/rwn44d23/predict" 
     headers = {"Authorization": f"Api-Key {baseten_api_key}"}
     formatted_data = format_prompt(prompt, **kwargs)
-
+    print(formatted_data)
     response = re.post(url, json=formatted_data, headers=headers)
     if response.status_code == 200:
         return response.json()  # Parse and return as needed
     else:
         return "Error: " + response.text
 
-def gradio_interface(prompt, control, honesty_coefficient, emotion, emotion_coefficient):
-    return call_baseten_model(prompt, control=control, honesty_coefficient=honesty_coefficient, emotion=emotion, emotion_coefficient=emotion_coefficient)
+def gradio_interface(prompt, control_type, honesty_coefficient, emotion, emotion_coefficient):
+    return call_baseten_model(prompt, control_type=control_type, honesty_coefficient=honesty_coefficient, emotion=emotion, emotion_coefficient=emotion_coefficient)
 
 iface = gr.Interface(
     fn=gradio_interface, 

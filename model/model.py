@@ -71,6 +71,7 @@ class Model:
 
        
     def predict(self, request: dict):
+        print(request)
         prompt = request.get("prompt", "")
         control_type = request.get("control_type", "honesty")
         max_new_tokens = request.get("max_new_tokens", 128)
@@ -92,7 +93,7 @@ class Model:
 
         # Collect activation parameters
         activation_params = {
-            key: request.get(key) for key in control_config.get("required_params", [])
+            key: request.get(key) for key in control_config.get("activation_inputs", [])
         }
         
         print(activation_params)
