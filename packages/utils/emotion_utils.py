@@ -26,21 +26,24 @@ def get_rep_readers(model, tokenizer, data, emotions = ["happiness", "sadness", 
             direction_method=direction_method,
         )
     
-    rep_readers[emotion] = rep_reader
+        rep_readers[emotion] = rep_reader
+    print(rep_readers)
     return rep_readers
 
 
 def get_activations(model, rep_readers, emotion, emotion_coefficient = .5):
-    layer_id = list(range(-11, -30, -1))
+    print(f'emotion: {emotion}, emotion_coefficient: {emotion_coefficient}')
+    layer_id = list(range(-5, -18, -1))
     activations = {}
     for layer in layer_id:
         activations[layer] = torch.tensor(emotion_coefficient * rep_readers[emotion].directions[layer] * rep_readers[emotion].direction_signs[layer]).to(model.device).half()
-
+    return activations
     
 def get_dataset(data_path, tokenizer):
     user_tag =  "[INST]"
     assistant_tag =  "[/INST]"
     data = primary_emotions_concept_dataset(data_path, user_tag=user_tag, assistant_tag=assistant_tag)
     
+    print(data)
     return data
 

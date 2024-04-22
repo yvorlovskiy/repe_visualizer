@@ -79,13 +79,8 @@ class Model:
         # Access the general control configuration
         control_config = self.representation_controls.get(control_type, {})
         get_activations = control_config.get("get_activations")
-
-        # Determine the appropriate 'rep_reader' based on control type and specific conditions
-        if control_type == "emotion" and "emotion" in request:
-            emotion = request.get("emotion")
-            rep_reader = control_config.get("rep_reader", {}).get(emotion)
-        else:
-            rep_reader = control_config.get("rep_reader")
+        print(control_config.get("rep_reader"))
+        rep_reader = control_config.get("rep_reader")
 
         # Validate that we have necessary components
         if not callable(get_activations) or rep_reader is None:
