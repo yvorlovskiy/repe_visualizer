@@ -66,7 +66,7 @@ def get_tqa_accuracy(model, all_item, tokenizer, preset):
     print(total_acc / len(all_item))
 
 
-question_path = "/home/zhaobin/representation-engineering/examples/fairness/adult_0_200_test_base_rate_0.0.jsonl"
+question_path = ""
 with open(question_path, 'r') as json_file:
     json_list = list(json_file)
 
